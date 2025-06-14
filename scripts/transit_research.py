@@ -9,6 +9,7 @@ import geopandas as gpd
 import plotly.express as px
 import os
 import matplotlib.ticker as ticker
+from matplotlib import animation
 
 # change directory to the directory where the script is located
 os.chdir('c:/users/cavin/Documents/NSS_Projects/Capstone/Nashville_Transit_Report/scripts')
@@ -17,6 +18,8 @@ print(f'Current working directory is {os.getcwd()}')
 
 # Load the transit data
 full_traffic_df = pd.read_csv('../data/full_traffic_data.csv')
+# Load traffic 2024 data only
+traffic_2024_df = pd.read_csv('../data/traffic_2024.csv')
 # Load the bus routes and stops data
 bus_stops_df = pd.read_csv('../data/stops_df.csv')
 # Load the bus transit centers data
@@ -92,7 +95,7 @@ fig, ax = plt.subplots(figsize=(14, 14))
 
 base = transit_centers_gdf.plot(ax=ax, color='red', markersize=30, zorder=2,label='Transit Centers')
 
-street_centerlines.plot(ax=base, edgecolor='black', zorder=0, linewidth=0.5, label='Street Centerlines')
+street_centerlines.plot(ax=base, edgecolor='black', zorder=0, linewidth=0.2, label='Street Centerlines')
 
 bus_stops_gdf_clipped.plot(ax=base, color='blue', markersize=1, zorder=1, label='Transit Stops')
 
@@ -106,5 +109,58 @@ plt.legend()
 plt.show()
 # plt.savefig('../images/transit_centers_and_stops_nashville.png', bbox_inches='tight', dpi=600)
 
+'''
+This next section creates an animated heatmap of traffic patterns in Nashville for the year 2024.
+'''
 
+useful_traffic_data = full_traffic_data[full_traffic_data['H01_1'] >= 0]
+traffic_2024 = useful_traffic_data[useful_traffic_data['ST_DATE'].str.contains('2024')]#[useful_traffic_data['DIR'].str.contains('1') | useful_traffic_data['DIR'].str.contains('2')]
+
+traffic_2024 = traffic_2024.drop('AADT' , axis=1, inplace=False)
+traffic_2024 = traffic_2024.drop_duplicates()
+
+traffic_2024_gpd = gpd.GeoDataFrame(traffic_2024, geometry=gpd.points_from_xy(traffic_2024['LONGITUDE'], traffic_2024['LATITUDE']))
+traffic_2024_gpd.crs = 'EPSG:4326'  # Set the coordinate reference system
+
+num_columns = 96
+start_column_index = 6
+end_column_index = start_column_index + num_columns
+heatmap_columns = list(traffic_2024_gpd.columns[start_column_index:end_column_index])
+
+fig, ax = plt.subplots(figsize=(14, 14))
+
+# --- 4. Define the animation function ---
+def animate(i):
+    ax.cla()  # Clear the previous frame
+
+    # Plot base layers first
+    streets_gdf.plot(
+        ax=ax, 
+        edgecolor='black', 
+        linewidth=0.2, 
+        label='Street Centerlines'
+    )
+
+    # Select the current column for the heatmap
+    current_column = heatmap_columns[i]
+
+    # Create the heatmap based on the current column's values
+    traffic_2024_gpd.plot(
+        column=current_column,
+        ax=ax,
+        legend=False,
+        cmap='YlOrRd',
+        vmin=10,
+        vmax=1000
+    )
+
+    # Add a title to indicate the time interval or column index
+    ax.set_title(f'15 min interval: {i+1}')
+
+    # Customize plot appearance
+    ax.set_axis_off()
+
+ani = animation.FuncAnimation(fig, animate, frames=num_columns, repeat=False) # 
+#ani.save('../images/animated_heatmap.gif', writer='imagemagick', fps=4)
+plt.show() 
 
