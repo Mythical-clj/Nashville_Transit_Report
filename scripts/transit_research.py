@@ -125,9 +125,13 @@ traffic_2024_gpd.crs = 'EPSG:4326'  # Set the coordinate reference system
 num_columns = 96
 start_column_index = 6
 end_column_index = start_column_index + num_columns
+# Use the actual column names for the 15-min interval data
 heatmap_columns = list(traffic_2024_gpd.columns[start_column_index:end_column_index])
 
+start_time = datetime.strptime("00:00:00", "%H:%M:%S")
+
 fig, ax = plt.subplots(figsize=(14, 14))
+time_text = ax.text(0.5, 1.02, '', transform=ax.transAxes, ha='center', va='bottom', fontsize=16)
 
 # --- 4. Define the animation function ---
 def animate(i):
@@ -153,14 +157,81 @@ def animate(i):
         vmin=10,
         vmax=1000
     )
+    # Add time text
+    current_time = (start_time + timedelta(minutes=15 * i)).time()
+    time_str = current_time.strftime("%H:%M:%S")
+    time_text = ax.text(0.5, 1.02, f"Time: {time_str}", transform=ax.transAxes, ha='center', va='bottom', fontsize=16)
 
-    # Add a title to indicate the time interval or column index
-    ax.set_title(f'15 min interval: {i+1}')
-
-    # Customize plot appearance
     ax.set_axis_off()
 
-ani = animation.FuncAnimation(fig, animate, frames=num_columns, repeat=False) # 
-#ani.save('../images/animated_heatmap.gif', writer='imagemagick', fps=4)
+ani = animation.FuncAnimation(fig, animate, frames=num_columns, repeat=False)
+
+# --- 6. Save or Display the animation ---
+# To save the animation to a file (e.g., GIF or MP4)
+#ani.save('../images/animated_heatmap_2024.gif', writer='imagemagick', fps=4) 
+
 plt.show() 
+
+'''
+This next section creates an animated heatmap of traffic patterns in Nashville for the year 2014.
+'''
+
+traffic_2014 = useful_traffic_data[useful_traffic_data['ST_DATE'].str.contains('2014')]
+
+traffic_2014 = traffic_2014.drop('AADT' , axis=1, inplace=False)
+traffic_2014 = traffic_2014.drop_duplicates()
+
+traffic_2014_gpd = gpd.GeoDataFrame(traffic_2014, geometry=gpd.points_from_xy(traffic_2014['LONGITUDE'], traffic_2014['LATITUDE']))
+traffic_2014_gpd.crs = 'EPSG:4326'  # Set the coordinate reference system
+
+num_columns = 96
+start_column_index = 6
+end_column_index = start_column_index + num_columns
+# Use the actual column names for the 15-min interval data
+heatmap_columns = list(traffic_2024_gpd.columns[start_column_index:end_column_index])
+
+start_time = datetime.strptime("00:00:00", "%H:%M:%S")
+
+fig, ax = plt.subplots(figsize=(14, 14))
+time_text = ax.text(0.5, 1.02, '', transform=ax.transAxes, ha='center', va='bottom', fontsize=16)
+
+# --- 4. Define the animation function ---
+def animate(i):
+    ax.cla()  # Clear the previous frame
+
+    # Plot base layers first
+    streets_gdf.plot(
+        ax=ax, 
+        edgecolor='black', 
+        linewidth=0.2, 
+        label='Street Centerlines'
+    )
+
+    # Select the current column for the heatmap
+    current_column = heatmap_columns[i]
+
+    # Create the heatmap based on the current column's values
+    traffic_2014_gpd.plot(
+        column=current_column,
+        ax=ax,
+        legend=False,
+        cmap='YlOrRd',
+        vmin=10,
+        vmax=1000
+    )
+    # Add time text
+    current_time = (start_time + timedelta(minutes=15 * i)).time()
+    time_str = current_time.strftime("%H:%M:%S")
+    time_text = ax.text(0.5, 1.02, f"Time: {time_str}", transform=ax.transAxes, ha='center', va='bottom', fontsize=16)
+
+    ax.set_axis_off()
+
+ani = animation.FuncAnimation(fig, animate, frames=num_columns, repeat=False)
+
+# --- 6. Save or Display the animation ---
+# To save the animation to a file (e.g., GIF or MP4)
+#ani.save('../images/animated_heatmap_2014.gif', writer='imagemagick', fps=4) 
+
+plt.show()
+
 
