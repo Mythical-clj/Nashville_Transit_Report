@@ -234,4 +234,46 @@ ani = animation.FuncAnimation(fig, animate, frames=num_columns, repeat=False)
 
 plt.show()
 
+# repeat graph for multiple bus routes based on trip_id
+stops_df_gdf = gpd.GeoDataFrame(bus_stops_df, geometry=gpd.points_from_xy(bus_stops_df['stop_lon'], bus_stops_df['stop_lat']))
+stops_df_gdf.crs = 'EPSG:4326'
 
+if not stops_df_gdf.empty:
+    #trip_id = stops_df_gdf['trip_id'] # Or pick a specific trip_id
+    trip_stops = stops_df_gdf[stops_df_gdf['trip_id'] == 352985].sort_values('stop_sequence')
+
+    # Extract coordinates
+    x = trip_stops.geometry.x.values
+    y = trip_stops.geometry.y.values
+
+    num_frames = min(len(x), len(y))
+
+    print(f"num_frames: {num_frames}, x shape: {x.shape}, y shape: {y.shape}")
+
+    if num_frames == 0:
+        print("No stops found for the selected trip_id.")
+    else:
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        streets_gdf.plot(ax=ax, edgecolor='black', linewidth=0.2, zorder=0, label='Street Centerlines')
+        ax.plot(x, y, 'o-', color='blue', markersize=1, label='Stop Sequence Path', zorder=1)
+
+        point, = ax.plot([], [], 'ro', markersize=6, label='Bus Location', zorder=2)
+
+        ax.set_title(f'Animated Bus Along Stop Sequence (trip_id={trip_id})')
+        ax.set_axis_off()
+        plt.legend()
+
+        def animate(i):
+            point.set_data([x[i]], [y[i]])  # Wrap in list to make it a sequence
+            return [point]
+
+
+        if num_frames > 0:
+            ani = animation.FuncAnimation(
+                fig, animate, frames=range(num_frames), interval=600, repeat=False
+            )
+
+        
+#ani.save('../images/bus_animation_3.gif', writer='pillow', fps=4)
+plt.show()
