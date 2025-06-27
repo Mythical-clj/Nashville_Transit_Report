@@ -277,3 +277,36 @@ if not stops_df_gdf.empty:
         
 #ani.save('../images/bus_animation_3.gif', writer='pillow', fps=4)
 plt.show()
+
+'''
+Calculate the average trip duration for all the trip ids in the bus stops data.
+tweak code to look at min and max as well as median.
+'''
+
+trip_avg_df = stops_df_gdf.copy()
+trip_avg_df['departure_time_parsed'] = df['departure_time'].apply(lambda x: pd.to_datetime(x, format='%H:%M:%S', errors='coerce'))
+
+first_last = (
+    trip_avg_df.sort_values(['trip_id', 'stop_sequence'])
+      .groupby('trip_id')
+      .agg(
+          first_stop_sequence=('stop_sequence', 'first'),
+          last_stop_sequence=('stop_sequence', 'last'),
+          first_departure=('departure_time_parsed', 'first'),
+          last_departure=('departure_time_parsed', 'last')
+      )
+)
+
+first_last['duration_min'] = (first_last['last_departure'] - first_last['first_departure']).dt.total_seconds() / 60
+
+average_duration = first_last['duration_min'].mean()
+print(f"Average trip duration (min): {average_duration:.2f}")
+
+median_duration = first_last['duration_min'].median()
+print(f"Median trip duration (min): {median_duration:.2f}")
+
+max_duration = first_last['duration_min'].max()
+print(f"Max trip duration (min): {max_duration:.2f}")
+
+min_duration = first_last['duration_min'].min()
+print(f"Min trip duration (min): {min_duration:.2f}")
