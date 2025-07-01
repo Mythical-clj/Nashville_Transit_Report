@@ -113,7 +113,7 @@ plt.show()
 This next section creates an animated heatmap of traffic patterns in Nashville for the year 2024.
 '''
 
-useful_traffic_data = full_traffic_data[full_traffic_data['H01_1'] >= 0]
+useful_traffic_data = full_traffic_df[full_traffic_df['H01_1'] >= 0]
 traffic_2024 = useful_traffic_data[useful_traffic_data['ST_DATE'].str.contains('2024')]#[useful_traffic_data['DIR'].str.contains('1') | useful_traffic_data['DIR'].str.contains('2')]
 
 traffic_2024 = traffic_2024.drop('AADT' , axis=1, inplace=False)
@@ -284,7 +284,7 @@ tweak code to look at min and max as well as median.
 '''
 
 trip_avg_df = stops_df_gdf.copy()
-trip_avg_df['departure_time_parsed'] = df['departure_time'].apply(lambda x: pd.to_datetime(x, format='%H:%M:%S', errors='coerce'))
+trip_avg_df['departure_time_parsed'] = trip_avg_df['departure_time'].apply(lambda x: pd.to_datetime(x, format='%H:%M:%S', errors='coerce'))
 
 first_last = (
     trip_avg_df.sort_values(['trip_id', 'stop_sequence'])
@@ -310,3 +310,37 @@ print(f"Max trip duration (min): {max_duration:.2f}")
 
 min_duration = first_last['duration_min'].min()
 print(f"Min trip duration (min): {min_duration:.2f}")
+
+'''
+Setting up graph to show intersections of each Pike in Nashville with street centerlines.
+'''
+
+pike_data = full_traffic_df[full_traffic_df['AT_ROAD'].str.contains('PIKE' or 'PK', na=False)]
+
+pike_data_gdf = gpd.GeoDataFrame(pike_data, geometry=gpd.points_from_xy(pike_data['LONGITUDE'], pike_data['LATITUDE']))
+pike_data_gdf.crs = 'EPSG:4326'
+
+streets_gdf = gpd.GeoDataFrame(streets_gdf, geometry=streets_gdf.geometry.to_crs(epsg=4326))
+
+# Plot street centerlines and highlight intersections with Pike data
+
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Plot all streets
+streets_gdf.plot(ax=ax, edgecolor='black', linewidth=0.2, zorder=0, label='Street Centerlines')
+
+# Plot Pike data points
+pike_data_gdf.plot(ax=ax, color='green', markersize=8, zorder=1, label='Pike Data Points')
+
+# Find intersections: buffer Pike points slightly and spatial join with streets
+pike_buffer = pike_data_gdf.copy()
+pike_buffer = pike_buffer.to_crs(epsg=4326)
+intersections = gpd.sjoin(streets_gdf, pike_buffer, how='inner', predicate='intersects')
+
+# Plot intersections
+intersections.plot(ax=ax, color='red', linewidth=2, zorder=2, label='Intersections')
+
+ax.set_title('Street Centerlines and Pike Data Intersections')
+ax.set_axis_off()
+plt.legend()
+plt.show()
